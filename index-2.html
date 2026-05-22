@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f3460" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="電卓" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <title>電卓</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #1a1a2e;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Mono', monospace;
+      overflow: hidden;
+    }
+
+    .wrap {
+      width: min(340px, 100vw);
+      height: 100dvh;
+      max-height: 680px;
+      background: #16213e;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px #0f3460;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: #0f3460;
+      padding: 14px 18px 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; opacity: 0.8; }
+    .label { color: #4a9eff; font-size: 10px; margin-left: 8px; letter-spacing: 2px; opacity: 0.7; }
+
+    .display {
+      background: #0a0a1a;
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    .expr {
+      color: #4a9eff;
+      font-size: 12px;
+      text-align: right;
+      opacity: 0.6;
+      min-height: 18px;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .main-display {
+      color: #ecf0f1;
+      font-size: 52px;
+      text-align: right;
+      letter-spacing: -1px;
+      line-height: 1;
+      transition: font-size 0.1s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .main-display.error { color: #e74c3c; }
+    .main-display.small { font-size: 34px; }
+    .main-display.xsmall { font-size: 26px; }
+
+    .buttons {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+    .row {
+      display: grid;
+      gap: 10px;
+      flex: 1;
+    }
+    .row-4 { grid-template-columns: repeat(4, 1fr); }
+    .row-3 { grid-template-columns: 2fr 1fr 1fr; }
+
+    button {
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 20px;
+      transition: transform 0.08s, box-shadow 0.08s, background 0.08s;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    button:active { transform: scale(0.93) !important; box-shadow: none !important; }
+
+    .btn-func { background: #95a5a6; color: #1a1a1a; box-shadow: 0 4px 0 #5d6d7e; }
+    .btn-func:active { background: #7f8c8d; }
+    .btn-op { background: #e67e22; color: #fff; box-shadow: 0 4px 0 #935e17; }
+    .btn-op:active { background: #c47a1e; }
+    .btn-num { background: #34495e; color: #ecf0f1; box-shadow: 0 4px 0 #1a252f; }
+    .btn-num:active { background: #2c3e50; }
+    .btn-eq { background: #e74c3c; color: #fff; box-shadow: 0 4px 0 #922b21; }
+    .btn-eq:active { background: #c0392b; }
+
+    .footer {
+      padding: 8px;
+      text-align: center;
+      color: #4a9eff;
+      font-size: 9px;
+      opacity: 0.3;
+      letter-spacing: 2px;
+      flex-shrink: 0;
+    }
+
+    @supports (padding: env(safe-area-inset-top)) {
+      .header { padding-top: max(14px, env(safe-area-inset-top)); }
+      .footer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-height: 600px) {
+      .buttons { padding: 10px; gap: 7px; }
+      .row { gap: 7px; }
+      button { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="dot" style="background:#e74c3c"></div>
+    <div class="dot" style="background:#e67e22"></div>
+    <div class="dot" style="background:#2ecc71"></div>
+    <span class="label">CALC v1.0</span>
+  </div>
+
+  <div class="display">
+    <div class="expr" id="expr">&nbsp;</div>
+    <div class="main-display" id="disp">0</div>
+  </div>
+
+  <div class="buttons">
+    <div class="row row-4">
+      <button class="btn-func" onclick="handle('C')">C</button>
+      <button class="btn-func" onclick="handle('±')">±</button>
+      <button class="btn-func" onclick="handle('%')">%</button>
+      <button class="btn-op"   onclick="handle('÷')">÷</button>
+    </div>
+    <div class="row row-4">
+      <button class="btn-num" onclick="handle('7')">7</button>
+      <button class="btn-num" onclick="handle('8')">8</button>
+      <button class="btn-num" onclick="handle('9')">9</button>
+      <button class="btn-op"  onclick="handle('×')">×</button>
+    </div>
+    <div class="row row-4">
+      <button class="btn-num" onclick="handle('4')">4</button>
+      <button class="btn-num" onclick="handle('5')">5</button>
+      <button class="btn-num" onclick="handle('6')">6</button>
+      <button class="btn-op"  onclick="handle('−')">−</button>
+    </div>
+    <div class="row row-4">
+      <button class="btn-num" onclick="handle('1')">1</button>
+      <button class="btn-num" onclick="handle('2')">2</button>
+      <button class="btn-num" onclick="handle('3')">3</button>
+      <button class="btn-op"  onclick="handle('+')">+</button>
+    </div>
+    <div class="row row-3">
+      <button class="btn-num" onclick="handle('0')">0</button>
+      <button class="btn-num" onclick="handle('.')">.</button>
+      <button class="btn-eq"  onclick="handle('=')">=</button>
+    </div>
+  </div>
+
+  <div class="footer">ホーム画面に追加して使えます</div>
+</div>
+
+<script>
+  let display = '0', expr = '', prev = null, op = null, justCalc = false;
+
+  function calc(a, b, o) {
+    switch(o) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b !== 0 ? a / b : 'Error';
+    }
+  }
+
+  function fmt(n) {
+    if (n === 'Error') return 'Error';
+    const s = parseFloat(n.toPrecision(10)).toString();
+    return s.length > 12 ? parseFloat(n.toPrecision(6)).toString() : s;
+  }
+
+  function updateUI() {
+    const d = document.getElementById('disp');
+    const e = document.getElementById('expr');
+    d.textContent = display;
+    d.className = 'main-display' + (display === 'Error' ? ' error' : display.length > 9 ? ' xsmall' : display.length > 6 ? ' small' : '');
+    e.textContent = expr || '\u00a0';
+  }
+
+  function handle(val) {
+    if (val === 'C') {
+      display = '0'; expr = ''; prev = null; op = null; justCalc = false;
+    } else if (val === '±') {
+      if (display !== '0') display = String(parseFloat(display) * -1);
+    } else if (val === '%') {
+      display = String(parseFloat(display) / 100);
+    } else if (['÷','×','−','+'].includes(val)) {
+      const cur = parseFloat(display);
+      if (prev !== null && op && !justCalc) {
+        const r = calc(prev, cur, op);
+        display = fmt(r) + 'やっぺ'; prev = r;
+        expr = fmt(r) + ' ' + val;
+      } else {
+        prev = cur;
+        expr = display + ' ' + val;
+      }
+      op = val; justCalc = false;
+    } else if (val === '=') {
+      if (op && prev !== null) {
+        const cur = parseFloat(display);
+        const r = calc(prev, cur, op);
+        expr = prev + ' ' + op + ' ' + cur + ' =';
+        display = fmt(r) + 'やっぺ';
+        prev = null; op = null; justCalc = true;
+      }
+    } else if (val === '.') {
+      if (justCalc) { display = '0.'; justCalc = false; }
+      else if (!display.includes('.')) display += '.';
+    } else {
+      if (justCalc) { display = val; justCalc = false; }
+      else display = display === '0' ? val : display.length < 12 ? display + val : display;
+    }
+    updateUI();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    const map = {'0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+      '.':'.', '+':'+', '-':'−', '*':'×', '/':'÷', 'Enter':'=', '=':'=', 'Escape':'C', '%':'%'};
+    if (map[e.key]) handle(map[e.key]);
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</body>
+</html>
